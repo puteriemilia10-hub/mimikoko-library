@@ -23,3 +23,9 @@ Use your own Cloudflare Pages domain in place of `YOUR-SITE.pages.dev`.
 The background is transparent. Position and resize each Browser Source independently in OBS. Data refreshes every 60 seconds by default; add `&refresh=30` to refresh every 30 seconds.
 
 **Important:** Supabase must be configured and populated for the overlays to show your live online catalogue. Without Supabase configuration, overlays use the bundled JSON preview data.
+
+## Dedicated TBR overlay
+
+Add a Browser Source named MIYUU90 - TBR with URL https://YOUR-SITE.pages.dev/obs-tbr.html. Set Width 820 and Height 420. The canvas is transparent; the cream shelf shows five To read books with saved covers. It cycles through your full TBR every 20 seconds and refreshes Supabase every 60 seconds. No admin login is needed.
+
+Options: ?limit=3 for three books; ?cycle=0 to stop rotation; ?cycle=30&refresh=30 for 30-second rotation and refresh. Limit supports 1-10 (more than five uses a second row; increase source height to 700). Rotation has a five-second minimum. If no TBR books exist, the overlay shows an empty state. A configured database failure shows an error instead of displaying sample books.
