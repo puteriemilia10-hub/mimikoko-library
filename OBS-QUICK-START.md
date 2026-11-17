@@ -29,3 +29,5 @@ The background is transparent. Position and resize each Browser Source independe
 Add a Browser Source named MIYUU90 - TBR with URL https://YOUR-SITE.pages.dev/obs-tbr.html. Set Width 820 and Height 420. The canvas is transparent; the cream shelf shows five To read books with saved covers. It cycles through your full TBR every 60 seconds and refreshes Supabase every 60 seconds. No admin login is needed.
 
 Options: ?limit=3 for three books; ?cycle=0 to stop rotation; ?cycle=30&refresh=30 for 30-second rotation and refresh. Limit supports 1-10 (more than five uses a second row; increase source height to 700). Rotation has a five-second minimum. If no TBR books exist, the overlay shows an empty state. A configured database failure shows an error instead of displaying sample books.
+
+TBR list changes animate with a soft fade-out followed by staggered slide-in book cards. The shelf heading stays visually steady. Unchanged refreshes do not replay the animation. Add ?animate=0 (or &animate=0 after other options) to disable motion. The overlay also respects the browser reduced-motion preference.

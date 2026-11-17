@@ -8,6 +8,34 @@
  const isTbr=book=>['to read','to be read','tbr'].includes(String(book.status||'').trim().toLowerCase());
 
  const cfg=window.MIYUU_CONFIG||{}; let books=[],loaded=false;
+ let pendingHtml=null,painting=false,lastHtml='';
+ async function paint(html){
+  pendingHtml=html;
+  if(painting)return;
+  painting=true;
+  const content=$('#content');
+  try{
+   while(pendingHtml!==null){
+    let next=pendingHtml;pendingHtml=null;
+    if(next===lastHtml)continue;
+    const motion=layer==='tbr'&&params.get('animate')!=='0'&&!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    const oldGrid=content.querySelector('.tbr-grid');
+    if(motion&&oldGrid?.animate){
+     await oldGrid.animate([{opacity:1,transform:'translateY(0)'},{opacity:0,transform:'translateY(-10px)'}],{duration:220,easing:'ease-in'}).finished.catch(()=>{});
+    }
+    // Refresh and rotation can arrive together. Show the newest list once.
+    if(pendingHtml!==null){next=pendingHtml;pendingHtml=null;}
+    content.innerHTML=next;lastHtml=next;
+    if(motion){
+     const cards=[...content.querySelectorAll('.tbr-grid .mini-book')];
+     await Promise.all(cards.map((card,index)=>card.animate?card.animate(
+      [{opacity:0,transform:'translateY(14px)'},{opacity:1,transform:'translateY(0)'}],
+      {duration:380,delay:index*55,easing:'cubic-bezier(.2,.7,.2,1)',fill:'backwards'}
+     ).finished.catch(()=>{}):Promise.resolve()));
+    }
+   }
+  }finally{painting=false;}
+ }
  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const status=s=>({'To read':'To be read','Reading':'Currently reading',"I've read it all!":'Completed','Pause':'Paused','Gave up':'DNF'}[s]||s||'Book');
  function cover(b){const url=window.MIYUU_COVERS.url(b);return `<div class="cover${url?' image':''}"><span>${esc(b.title)}</span><small>${esc((b.author||'').split(' ').slice(-1)[0])}</small>${url?`<img src="${esc(url)}" alt="Cover of ${esc(b.title)}" decoding="async" referrerpolicy="no-referrer" onerror="this.parentElement.classList.remove('image');this.remove()">`:''}</div>`;}
@@ -24,9 +52,9 @@
  else if(layer==='progress'){const b=first;const pct=b&&b.pages?Math.min(100,Math.round((b.currentPage||0)/b.pages*100)):0;html=b?`<section class="panel progress-panel"><div class="brand">MIYUU90 · READING NOW</div><div class="bookline">${esc(b.title)}</div><p class="author">${esc(b.author)}</p><div class="big">${pct}%</div><div class="progress"><span style="width:${pct}%"></span></div><div class="meta">${b.currentPage||0} of ${b.pages||'?'} pages</div></section>`:`<div class="panel empty">No current book selected</div>`;}
  else if(layer==='ticker'){html=`<div class="ticker"><i class="dot"></i><span>${first?`NOW READING · ${esc(first.title)} — ${esc(first.author)}`:'MIYUU90 · Gaming, books & occasional chaos'}</span></div>`;}
  else {let list=layer==='finished'?books.filter(b=>b.status==="I've read it all!"):layer==='tbr'?books.filter(b=>b.status==='To read'):books.filter(b=>b.status==='Reading');list=list.slice(0,limit);html=`<section class="panel shelf-panel"><div class="brand">MIYUU90 · THE LITTLE LIBRARY</div><h2 class="heading">${layer==='finished'?'Recently finished':layer==='tbr'?'On my TBR':'Currently reading'}</h2><div class="mini-grid">${list.map(b=>`<article class="mini-book">${cover(b)}<div class="btitle">${esc(b.title)}</div><div class="bauthor">${esc(b.author)}</div></article>`).join('')||'<p class="empty">Nothing on this shelf yet.</p>'}</div></section>`;}
- $('#content').innerHTML=html;$('#overlay').className='layer-'+layer;
+ paint(html);$('#overlay').className='layer-'+layer;
  }
- async function update(){try{books=await getBooks();loaded=true;render();}catch(e){loaded=false;$('#content').innerHTML='<div class="panel empty">Could not load library data.</div>';}}
+ async function update(){try{books=await getBooks();loaded=true;render();}catch(e){loaded=false;paint('<div class="panel empty">Could not load library data.</div>');}}
  update();setInterval(update,refresh);
  if(layer==='tbr'&&cycle>0)setInterval(()=>{if(loaded){shelfPage++;render();}},Math.max(5,cycle)*1000);
 })();
