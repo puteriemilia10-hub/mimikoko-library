@@ -13,7 +13,7 @@ function currentCard(book,featured=false){
   const page=Math.max(0,Number(book.currentPage)||0),total=Math.max(0,Number(book.pages)||0);
   const percent=total?Math.min(100,Math.round(page/total*100)):0;
   const progress=page&&total?`<div class="reading-progress"><div class="progress" role="progressbar" aria-label="Reading progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${percent}"><span style="width:${percent}%"></span></div><p>${page} of ${total} pages <span>${percent}%</span></p></div>`:`<p class="reading-meta">${page?`Page ${page}`:total?`${total} pages`:'Reading in progress'}</p>`;
-  return `<article class="current-card${featured?' featured-read':''}">${cover(book,featured)}<div class="reading-details">${featured?'<p class="eyebrow">READING NOW</p>':''}<${featured?'h2':'h3'}>${esc(book.title)}</${featured?'h2':'h3'}><p class="reading-author">${esc(book.author)}</p>${progress}</div></article>`;
+  return `<article class="current-card reading-row-card">${cover(book,featured)}<div class="reading-details"><h2>${esc(book.title)}</h2><p class="reading-author">${esc(book.author)}</p>${progress}</div></article>`;
 }
 function render(){
   books=books.map(book=>({...book,status:shelfStatus(book.status)}));
@@ -24,7 +24,7 @@ function render(){
   $('#readingCount').textContent=counts.Reading||0;
   const current=books.filter(book=>book.status==='Reading');
   $('#currentBooks').innerHTML=current.length?
-    currentCard(current[0],true)+(current.length>1?`<details class="more-current"><summary>More current reads <span>${current.length-1}</span></summary><div class="current-grid">${current.slice(1).map(book=>currentCard(book)).join('')}</div></details>`:''):
+    `<div class="reading-row" role="region" aria-label="Currently reading books; scroll horizontally for more" tabindex="0">${current.map((book,index)=>currentCard(book,index===0)).join('')}</div>`:
     '<div class="reading-empty"><h2>A new story is waiting.</h2><p>No books are marked as currently reading yet.</p><a class="button" href="#shelves">Explore the bookshelf</a></div>';
   filterBooks();
 }
