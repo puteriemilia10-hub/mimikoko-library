@@ -5,11 +5,30 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const statusLabel=s=>({'To read':'To read','Reading':'Currently reading',"I've read it all!":'Completed','Pause':'Paused','Gave up':'DNF'}[s]||s||'Unsorted');
 const shelfOrder=['To read','Reading',"I've read it all!",'Pause','Gave up'];
 function shelfStatus(value){const raw=String(value||'').trim();const aliases={'to read':'To read','to be read':'To read','tbr':'To read','reading':'Reading','currently reading':'Reading',"i've read it all!":"I've read it all!",'completed':"I've read it all!",'complete':"I've read it all!",'finished':"I've read it all!",'pause':'Pause','paused':'Pause','gave up':'Gave up','dnf':'Gave up'};return aliases[raw.toLowerCase()]||raw||'Unsorted';}
-function cover(b){const url=window.MIYUU_COVERS.url(b);return `<div class="cover${url?' image-cover':''}"><span>${esc(b.title)}</span><small>${esc((b.author||'').split(' ').slice(-1)[0])}</small>${url?`<img src="${esc(url)}" alt="Cover of ${esc(b.title)}" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.parentElement.classList.remove('image-cover');this.remove()">`:''}</div>`;}
+function cover(b,featured=false){const url=window.MIYUU_COVERS.url(b);return `<div class="cover${url?' image-cover':''}"><span>${esc(b.title)}</span><small>${esc((b.author||'').split(' ').slice(-1)[0])}</small>${url?`<img src="${esc(url)}" alt="Cover of ${esc(b.title)}" loading="${featured?'eager':'lazy'}" ${featured?'fetchpriority="high"':''} decoding="async" referrerpolicy="no-referrer" onerror="this.parentElement.classList.remove('image-cover');this.remove()">`:''}</div>`;}
 async function init(){try{if(connected()){supabaseClient=window.supabase.createClient(CONFIG.supabaseUrl,CONFIG.supabaseAnonKey);const {data,error}=await supabaseClient.from('books').select('*').order('title');if(!error&&data?.length){books=data.map(fromDb);$('#connectionNote').textContent='Live library · updates are shared with every visitor.';}else{books=await loadFallback();$('#connectionNote').textContent='Database connected. Import your CSV in Library admin to publish your collection.';}const {data:auth}=await supabaseClient.auth.getSession();session=auth.session;setAdmin();supabaseClient.auth.onAuthStateChange((_e,s)=>{session=s;setAdmin();});}else{books=await loadFallback();$('#connectionNote').textContent='Preview mode · connect Supabase to publish live updates.';}}catch(e){books=await loadFallback();$('#connectionNote').textContent='Preview mode · could not reach the live database.';}render();}
 async function loadFallback(){const r=await fetch('data/books.json');return r.ok?await r.json():[];}
 function fromDb(b){return {key:b.book_key,title:b.title,author:b.author,status:b.status,pages:b.pages,genre:b.genre,isbn:b.isbn,publisher:b.publisher,language:b.language,rating:b.rating,cover:b.cover_url,currentPage:b.current_page||0};}
-function render(){books=books.map(book=>({...book,status:shelfStatus(book.status)}));const counts={'To read':0,'Reading':0,"I've read it all!":0};books.forEach(b=>counts[b.status]=(counts[b.status]||0)+1);$('#totalCount').textContent=books.length;$('#finishedCount').textContent=counts["I've read it all!"]||0;$('#tbrCount').textContent=counts['To read']||0;$('#readingCount').textContent=counts.Reading||0;const current=books.filter(b=>b.status==='Reading');$('#currentBooks').innerHTML=current.map(b=>{let pct=b.pages?Math.min(100,Math.round((Number(b.currentPage||0)/b.pages)*100)):0;return `<article class="current-card">${cover(b)}<div><h3>${esc(b.title)}</h3><p>${esc(b.author)}</p>${b.currentPage?`<div class="progress"><span style="width:${pct}%"></span></div><p class="muted">${b.currentPage} / ${b.pages||'?'} pages · ${pct}%</p>`:`<p class="muted">${b.pages?b.pages+' pages':'Reading in progress'}</p>`}</div></article>`}).join('')||'<p class="muted">No current reads yet.</p>';filterBooks();}
+function currentCard(book,featured=false){
+  const page=Math.max(0,Number(book.currentPage)||0),total=Math.max(0,Number(book.pages)||0);
+  const percent=total?Math.min(100,Math.round(page/total*100)):0;
+  const progress=page&&total?`<div class="reading-progress"><div class="progress" role="progressbar" aria-label="Reading progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${percent}"><span style="width:${percent}%"></span></div><p>${page} of ${total} pages <span>${percent}%</span></p></div>`:`<p class="reading-meta">${page?`Page ${page}`:total?`${total} pages`:'Reading in progress'}</p>`;
+  return `<article class="current-card${featured?' featured-read':''}">${cover(book,featured)}<div class="reading-details">${featured?'<p class="eyebrow">READING NOW</p>':''}<${featured?'h2':'h3'}>${esc(book.title)}</${featured?'h2':'h3'}><p class="reading-author">${esc(book.author)}</p>${progress}</div></article>`;
+}
+function render(){
+  books=books.map(book=>({...book,status:shelfStatus(book.status)}));
+  const counts={};books.forEach(book=>counts[book.status]=(counts[book.status]||0)+1);
+  $('#totalCount').textContent=books.length;
+  $('#finishedCount').textContent=counts["I've read it all!"]||0;
+  $('#tbrCount').textContent=counts['To read']||0;
+  $('#readingCount').textContent=counts.Reading||0;
+  const current=books.filter(book=>book.status==='Reading');
+  $('#currentBooks').innerHTML=current.length?
+    currentCard(current[0],true)+(current.length>1?`<details class="more-current"><summary>More current reads <span>${current.length-1}</span></summary><div class="current-grid">${current.slice(1).map(book=>currentCard(book)).join('')}</div></details>`:''):
+    '<div class="reading-empty"><h2>A new story is waiting.</h2><p>No books are marked as currently reading yet.</p><a class="button" href="#shelves">Explore the bookshelf</a></div>';
+  filterBooks();
+}
+
 function bookCard(b){return `<article class="book-card">${cover(b)}<h4>${esc(b.title)}</h4><p>${esc(b.author)}</p></article>`;}
 function filterBooks(){
   const query=$('#search').value.trim().toLowerCase(),selected=$('#statusFilter').value,sort=$('#sort').value;
