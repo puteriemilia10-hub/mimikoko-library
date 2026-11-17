@@ -85,3 +85,22 @@ In OBS: Sources → + → Browser → paste a URL. Set width/height to 1920×108
 The overlay uses Supabase live catalogue data when `config.js` is configured, otherwise it loads the bundled sample catalogue from `data/books.json`. Reading page progress will remain 0 until you add a current-page value in the database/admin editor; Bookmory's provided export does not include a reliable current-page field in this export.
 
 Each overlay URL is a separate OBS layer, so you can show/hide, position, resize and stack them independently. The HTML body is transparent; only the designed card/ticker is visible.
+
+## Book covers
+
+After importing your catalogue, sign in to Library admin and click Find book covers. Keep the page open until the search finishes. This sends batches of up to ten book titles to Open Library, requires an exact normalized title and author match, and saves matched cover URLs in Supabase. Existing cover URLs are preserved. No extra API key or SQL migration is needed. Books with ISBNs can also display Open Library ISBN covers automatically.
+
+Unmatched books keep the designed title/author placeholder. A matched cover may represent a different edition. You can set a custom HTTPS image URL in the books table cover_url column. CSV reimports now preserve cover_url and current_page. Public pages and OBS use the saved covers without performing title searches. Cover images are served by Open Library; availability depends on that service.
+
+## Google Books fallback setup
+
+Find book covers now tries Open Library first, then Google Books for unmatched books. It preserves existing cover URLs and only writes cover_url. Google matches require an exact normalized title and author, or the same ISBN. Images can show a different edition. Missing keys skip Google with an explanatory status; provider failures leave saved progress intact.
+
+1. Open https://console.cloud.google.com/ and create or choose a project.
+2. In APIs & Services > Library, find Books API and enable it.
+3. In APIs & Services > Credentials, create an API key. Restrict its API access to Books API.
+4. For browser use, apply Websites / HTTP referrer restrictions for the actual origin you use. For this local site, include http://127.0.0.1:5500/* (and http://localhost:5500/* only if used). Add your published domain when deploying.
+5. Paste the key into googleBooksApiKey in config.js and save. This is a separate Google key, not a Supabase key. Do not use an OAuth client secret or service account file.
+6. Hard-refresh the page, sign in to Library admin, and click Find book covers. Keep the page open.
+
+The integration has been checked with simulated provider responses; a live Google search requires your own enabled key. Consult https://developers.google.com/books/docs/v1/using and https://docs.cloud.google.com/docs/authentication/api-keys for current setup details.
